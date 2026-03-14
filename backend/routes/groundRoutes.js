@@ -1,28 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const path = require("path");
+const streamifier = require("streamifier");
 const Ground = require("../models/Ground");
 const protect = require("../middleware/authMiddleware");
+const cloudinary = require("../config/cloudinary");
 
-// multer storage config
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueName + path.extname(file.originalname));
-  },
-});
+// multer memory storage instead of local disk storage
+const storage = multer.memoryStorage();
 
 // file filter for image types
 const fileFilter = (req, file, cb) => {
-  const allowedExtensions = /jpeg|jpg|png|webp/;
-  const extname = allowedExtensions.test(
-    path.extname(file.originalname).toLowerCase()
-  );
-
   const allowedMimes = [
     "image/jpeg",
     "image/jpg",
@@ -30,9 +18,7 @@ const fileFilter = (req, file, cb) => {
     "image/webp",
   ];
 
-  const mimetype = allowedMimes.includes(file.mimetype);
-
-  if (extname && mimetype) {
+  if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error("Only jpg, jpeg, png, webp files are allowed"));
@@ -43,6 +29,23 @@ const upload = multer({
   storage,
   fileFilter,
 });
+
+// upload buffer to cloudinary
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "sports-booking-grounds",
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+
+    streamifier.createReadStream(fileBuffer).pipe(stream);
+  });
+};
 
 router.get("/", async (req, res) => {
   try {
@@ -98,13 +101,20 @@ router.post("/", protect, upload.single("image"), async (req, res) => {
       }
     }
 
+    let imageUrl = "";
+
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      imageUrl = result.secure_url;
+    }
+
     const newGround = new Ground({
       groundName,
       sportType,
       location,
       pricePerHour,
       availableSlots: parsedSlots,
-      image: req.file ? `/uploads/${req.file.filename}` : "",
+      image: imageUrl,
       owner: req.user.email,
     });
 
@@ -112,7 +122,10 @@ router.post("/", protect, upload.single("image"), async (req, res) => {
     res.status(201).json(savedGround);
   } catch (error) {
     console.log("POST ground error:", error);
-    res.status(500).json({ message: "Failed to add ground" });
+    res.status(500).json({
+      message: "Failed to add ground",
+      error: error.message,
+    });
   }
 });
 
