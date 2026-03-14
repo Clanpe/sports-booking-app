@@ -14,6 +14,7 @@ function Grounds() {
   const fetchGrounds = async () => {
     try {
       const res = await API.get("/api/grounds");
+      console.log("Grounds data:", res.data);
       setGrounds(res.data);
     } catch (error) {
       console.log("Fetch grounds error:", error.response?.data || error.message);
@@ -32,11 +33,29 @@ function Grounds() {
     navigate(`/book-ground/${groundId}`);
   };
 
-  const filteredGrounds = grounds.filter((ground) =>
-    ground.groundName.toLowerCase().includes(search.toLowerCase()) ||
-    ground.location.toLowerCase().includes(search.toLowerCase()) ||
-    ground.sportType.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredGrounds = grounds.filter((ground) => {
+    const name = ground.groundName || "";
+    const location = ground.location || "";
+    const sport = ground.sportType || "";
+
+    return (
+      name.toLowerCase().includes(search.toLowerCase()) ||
+      location.toLowerCase().includes(search.toLowerCase()) ||
+      sport.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  const getImageSrc = (image) => {
+    if (!image || image.trim() === "") {
+      return "https://via.placeholder.com/600x300?text=Sports+Ground";
+    }
+
+    if (image.startsWith("http")) {
+      return image;
+    }
+
+    return `https://sports-booking-app-pi4g.onrender.com${image}`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -76,11 +95,7 @@ function Grounds() {
               >
                 <div className="relative">
                   <img
-                    src={
-                      ground.image && ground.image.trim() !== ""
-                        ? `http://localhost:5000${ground.image}`
-                        : "https://via.placeholder.com/600x300?text=Sports+Ground"
-                    }
+                    src={getImageSrc(ground.image)}
                     alt={ground.groundName}
                     className="w-full h-52 object-cover"
                   />
@@ -108,7 +123,7 @@ function Grounds() {
 
                   <p className="text-gray-600 text-sm mb-4">
                     <span className="font-semibold">Slots:</span>{" "}
-                    {ground.availableSlots?.length > 0
+                    {ground.availableSlots && ground.availableSlots.length > 0
                       ? ground.availableSlots.join(", ")
                       : "No slots available"}
                   </p>
