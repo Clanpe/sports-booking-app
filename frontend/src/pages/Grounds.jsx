@@ -18,7 +18,6 @@ function Grounds() {
   const fetchGrounds = async () => {
     try {
       const res = await API.get("/api/grounds");
-      console.log("Grounds data:", res.data);
       setGrounds(res.data);
     } catch (error) {
       console.log("Fetch grounds error:", error.response?.data || error.message);
@@ -37,17 +36,21 @@ function Grounds() {
     navigate(`/book-ground/${groundId}`);
   };
 
-  const handleViewDetails = async (ground) => {
-    setSelectedGround(ground);
-    setShowModal(true);
-
+  const fetchGroundFeedback = async (ground) => {
     try {
       const res = await API.get(`/api/feedback/${ground._id}`);
+
       setFeedback(res.data);
     } catch (error) {
       console.log("Fetch feedback error:", error);
       setFeedback([]);
     }
+  };
+
+  const handleViewDetails = async (ground) => {
+    setSelectedGround(ground);
+    setShowModal(true);
+    await fetchGroundFeedback(ground);
   };
 
   const handleCloseModal = () => {
@@ -59,6 +62,7 @@ function Grounds() {
 
   const handleSubmitFeedback = async () => {
     const token = localStorage.getItem("token");
+
     if (!token) {
       alert("Please login first");
       navigate("/login");
@@ -71,17 +75,18 @@ function Grounds() {
     }
 
     try {
-      const res = await API.post(
-        `/api/feedback/${selectedGround._id}`,
-        newFeedback,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setFeedback([res.data, ...feedback]);
+      await API.post(`/api/feedback/${selectedGround._id}`, newFeedback, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       setNewFeedback({ rating: 5, comment: "" });
-      // Refresh grounds to update average rating
-      fetchGrounds();
+
+      await fetchGrounds();
+
+      const updatedGround = grounds.find((g) => g._id === selectedGround._id) || selectedGround;
+      await fetchGroundFeedback(updatedGround);
+
+      alert("Review submitted successfully");
     } catch (error) {
       console.log("Submit feedback error:", error);
       alert(error.response?.data?.message || "Failed to submit feedback");
@@ -189,7 +194,7 @@ function Grounds() {
                         <div className="flex text-yellow-400">
                           {[...Array(5)].map((_, i) => (
                             <span key={i}>
-                              {i < Math.floor(ground.averageRating) ? "★" : "☆"}
+                              {i < Math.round(ground.averageRating) ? "★" : "☆"}
                             </span>
                           ))}
                         </div>
@@ -223,7 +228,6 @@ function Grounds() {
         )}
       </div>
 
-      {/* Ground Details Modal */}
       {showModal && selectedGround && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -258,34 +262,41 @@ function Grounds() {
                       {selectedGround.sportType}
                     </p>
                     <p className="text-gray-600">
-                      <span className="font-semibold">💰 Price:</span>{" "}
-                      ₹{selectedGround.pricePerHour}/hr
+                      <span className="font-semibold">💰 Price:</span> ₹
+                      {selectedGround.pricePerHour}/hr
                     </p>
                     <p className="text-gray-600">
                       <span className="font-semibold">⏰ Slots:</span>{" "}
-                      {selectedGround.availableSlots && selectedGround.availableSlots.length > 0
+                      {selectedGround.availableSlots &&
+                      selectedGround.availableSlots.length > 0
                         ? selectedGround.availableSlots.join(", ")
                         : "No slots available"}
                     </p>
 
-                    {selectedGround.averageRating > 0 && (
+                    {selectedGround.averageRating > 0 ? (
                       <div className="flex items-center">
                         <div className="flex text-yellow-400">
                           {[...Array(5)].map((_, i) => (
                             <span key={i}>
-                              {i < Math.floor(selectedGround.averageRating) ? "★" : "☆"}
+                              {i < Math.round(selectedGround.averageRating)
+                                ? "★"
+                                : "☆"}
                             </span>
                           ))}
                         </div>
                         <span className="ml-2 text-sm text-gray-600">
-                          {selectedGround.averageRating} ({selectedGround.feedbackCount} reviews)
+                          {selectedGround.averageRating} (
+                          {selectedGround.feedbackCount} reviews)
                         </span>
                       </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No reviews yet</p>
                     )}
 
                     <div>
                       <h4 className="font-semibold mb-2">Features:</h4>
-                      {selectedGround.features && selectedGround.features.length > 0 ? (
+                      {selectedGround.features &&
+                      selectedGround.features.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {selectedGround.features.map((feature, index) => (
                             <span
@@ -306,18 +317,25 @@ function Grounds() {
                 <div>
                   <h3 className="text-xl font-bold mb-4">Feedback & Reviews</h3>
 
-                  {/* Add Feedback Form */}
                   <div className="bg-gray-50 p-4 rounded-xl mb-6">
                     <h4 className="font-semibold mb-3">Add Your Review</h4>
+
                     <div className="mb-3">
-                      <label className="block text-sm font-medium mb-1">Rating:</label>
-                      <div className="flex">
+                      <label className="block text-sm font-medium mb-1">
+                        Rating:
+                      </label>
+                      <div className="flex gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
                             key={star}
-                            onClick={() => setNewFeedback({ ...newFeedback, rating: star })}
+                            type="button"
+                            onClick={() =>
+                              setNewFeedback({ ...newFeedback, rating: star })
+                            }
                             className={`text-2xl ${
-                              star <= newFeedback.rating ? "text-yellow-400" : "text-gray-300"
+                              star <= newFeedback.rating
+                                ? "text-yellow-400"
+                                : "text-gray-300"
                             }`}
                           >
                             ★
@@ -325,13 +343,20 @@ function Grounds() {
                         ))}
                       </div>
                     </div>
+
                     <textarea
                       value={newFeedback.comment}
-                      onChange={(e) => setNewFeedback({ ...newFeedback, comment: e.target.value })}
+                      onChange={(e) =>
+                        setNewFeedback({
+                          ...newFeedback,
+                          comment: e.target.value,
+                        })
+                      }
                       placeholder="Share your experience..."
                       className="w-full p-3 border rounded-lg mb-3"
                       rows="3"
                     />
+
                     <button
                       onClick={handleSubmitFeedback}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
@@ -340,10 +365,11 @@ function Grounds() {
                     </button>
                   </div>
 
-                  {/* Feedback List */}
                   <div className="space-y-4">
                     {feedback.length === 0 ? (
-                      <p className="text-gray-500">No reviews yet. Be the first to review!</p>
+                      <p className="text-gray-500">
+                        No reviews yet. Be the first to review!
+                      </p>
                     ) : (
                       feedback.map((item) => (
                         <div key={item._id} className="bg-gray-50 p-4 rounded-xl">
@@ -355,9 +381,11 @@ function Grounds() {
                               ))}
                             </div>
                           </div>
+
                           <p className="text-gray-600 text-sm mb-2">
                             {new Date(item.createdAt).toLocaleDateString()}
                           </p>
+
                           <p className="text-gray-700">{item.comment}</p>
                         </div>
                       ))

@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const streamifier = require("streamifier");
 const Ground = require("../models/Ground");
-const Feedback = require("../models/Feedback");
+const Feedback = require("../models/feedbackModel");
 const protect = require("../middleware/authMiddleware");
 const cloudinary = require("../config/cloudinary");
 
