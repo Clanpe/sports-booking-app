@@ -1,52 +1,40 @@
-import { useState } from "react"
-import API from "../services/api"
-import { useNavigate, Link } from "react-router-dom"
+import { useState } from "react";
+import API from "../services/api";
+import { useNavigate, Link } from "react-router-dom";
 
 function Signup() {
-
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const navigate = useNavigate()
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
   const handleSignup = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     try {
-
       const res = await API.post("/api/auth/signup", {
         name,
         email,
-        password
-      })
+        password,
+      });
 
-      console.log("Signup response:", res.data)
-
-      alert("Signup successful")
-
-      navigate("/login")
-
+      console.log("Signup response:", res.data);
+      alert("Signup successful");
+      navigate("/login");
     } catch (error) {
-
-      console.log("Signup error:", error.response?.data || error.message)
-
-      alert("Signup failed")
-
+      console.log("Signup error:", error.response?.data || error.message);
+      alert(error.response?.data?.message || "Signup failed");
     }
-  }
+  };
 
   return (
-
     <div className="min-h-screen flex items-center justify-center bg-green-100">
-
       <div className="bg-white p-8 rounded-xl shadow-lg w-96">
-
         <h2 className="text-2xl font-bold text-center text-green-700 mb-6">
           Create Sports Account
         </h2>
 
         <form onSubmit={handleSignup} className="flex flex-col gap-4">
-
           <input
             type="text"
             placeholder="Enter Name"
@@ -87,15 +75,10 @@ function Signup() {
               Login
             </Link>
           </p>
-
         </form>
-
       </div>
-
     </div>
-
-  )
-
+  );
 }
 
-export default Signup
+export default Signup;

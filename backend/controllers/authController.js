@@ -1,9 +1,20 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
-// Signup
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+};
+
 const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -32,16 +43,22 @@ const signup = async (req, res) => {
 
     res.status(201).json({
       message: "Signup successful",
+      token: generateToken(newUser),
+      user: {
+        _id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+      },
     });
   } catch (error) {
     console.log("Signup error:", error);
     res.status(500).json({
       message: "Server error during signup",
+      error: error.message,
     });
   }
 };
 
-// Login
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -56,7 +73,7 @@ const login = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({
-        message: "User not found",
+        message: "Invalid email or password",
       });
     }
 
@@ -64,24 +81,24 @@ const login = async (req, res) => {
 
     if (!isMatch) {
       return res.status(401).json({
-        message: "Invalid credentials",
+        message: "Invalid email or password",
       });
     }
 
-    const token = jwt.sign(
-      { email: user.email, id: user._id },
-      JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    res.json({
+    res.status(200).json({
       message: "Login successful",
-      token,
+      token: generateToken(user),
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+      },
     });
   } catch (error) {
     console.log("Login error:", error);
     res.status(500).json({
       message: "Server error during login",
+      error: error.message,
     });
   }
 };
