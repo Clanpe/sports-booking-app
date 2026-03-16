@@ -12,29 +12,19 @@ const feedbackRoutes = require("./routes/feedbackRoutes");
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://sports-booking-app-iazj.vercel.app",
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("Not allowed by CORS"));
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    origin: [
+      "http://localhost:5173",
+      "https://sports-booking-app-iazj.vercel.app"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
   })
 );
 
 app.use(express.json());
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/", (req, res) => {
